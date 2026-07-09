@@ -1,0 +1,486 @@
+# VAPT Crash Course: Penetration Testing & Vulnerability Management
+
+A comprehensive reference covering methodologies, frameworks, tools, and practical technique across the full VAPT lifecycle.
+
+---
+
+## Table of Contents
+1. Foundations & Terminology
+2. Legal, Ethical & Scoping Fundamentals
+3. Methodologies & Frameworks (PTES, OWASP, OSSTMM, NIST 800-115, ISSAF)
+4. The Vulnerability Management Lifecycle
+5. Reconnaissance & OSINT
+6. Scanning & Enumeration
+7. Vulnerability Analysis & Risk Scoring (CVSS, EPSS, DREAD)
+8. Exploitation — Network & Infrastructure
+9. Exploitation — Web Applications (OWASP Top 10 Deep Dive)
+10. Exploitation — Wireless
+11. Social Engineering & Physical Security Testing
+12. Post-Exploitation & Active Directory Attacks
+13. Cloud Security Testing (AWS/Azure/GCP)
+14. Mobile Application Testing
+15. Tools Compendium (organized by phase)
+16. Reporting & Communication
+17. Governance, Compliance & Standards Mapping
+18. Certifications Landscape
+19. Command Cheat Sheet
+20. Glossary
+
+---
+
+## 1. Foundations & Terminology
+
+| Term | Definition |
+|---|---|
+| **Asset** | Anything of value to the organization (data, system, service, reputation) |
+| **Vulnerability** | A weakness that could be exploited |
+| **Threat** | Anything capable of exploiting a vulnerability (actor, event, or circumstance) |
+| **Risk** | The likelihood x impact of a threat exploiting a vulnerability against an asset |
+| **Exploit** | Code or technique that takes advantage of a vulnerability |
+| **Attack surface** | The sum of all points where an attacker could try to enter or extract data |
+| **Attack vector** | The specific path/method used to gain access |
+| **Zero-day** | A vulnerability unknown to the vendor with no patch available |
+| **PoC (Proof of Concept)** | Demonstration code/evidence that a vulnerability is genuinely exploitable |
+| **IOC (Indicator of Compromise)** | Forensic evidence suggesting a breach has occurred |
+| **TTPs** | Tactics, Techniques, and Procedures — how adversaries operate (core to MITRE ATT&CK) |
+
+### VA vs PT vs Red Team vs Purple Team
+
+| Engagement Type | Goal | Depth | Exploitation? | Announced to Blue Team? |
+|---|---|---|---|---|
+| Vulnerability Assessment (VA) | Identify and rank as many weaknesses as possible | Broad, shallow | No (or minimal, safe validation only) | Yes |
+| Penetration Test (PT) | Prove real-world impact of specific vulnerabilities | Narrower, deeper | Yes, controlled | Yes |
+| Red Team | Emulate a real adversary's full attack chain, test detection & response | Narrow, very deep, goal-oriented | Yes, full chain | Usually no (tests SOC) |
+| Purple Team | Collaborative exercise to improve detection controls in real time | Focused on specific TTPs | Yes, but transparent | Yes, explicitly collaborative |
+| Bug Bounty | Continuous, crowd-sourced vulnerability discovery | Varies by researcher | Varies by program rules | N/A (ongoing program) |
+
+**Interview-grade one-liner:** "VA answers 'what's wrong,' PT answers 'can it actually be exploited and what's the impact,' Red Team answers 'would we even notice.'"
+
+---
+
+## 2. Legal, Ethical & Scoping Fundamentals
+
+### Before any test begins
+- **Written authorization** — a signed contract explicitly authorizing testing, often called a "get-out-of-jail-free letter." Without this, penetration testing activity is indistinguishable from a crime in almost every jurisdiction.
+- **Rules of Engagement (ROE)** — defines: scope (IP ranges, domains, apps, physical sites), timing windows, excluded systems (e.g., production payment systems, safety-critical OT), permitted techniques (is social engineering in scope? DoS testing?), emergency contacts, and escalation procedure if a critical vulnerability or evidence of prior compromise is found.
+- **NDA / confidentiality agreement** — testers routinely have access to sensitive data and must contractually protect it.
+- **Data handling agreement** — what happens to captured data (credentials, PII, source code) during and after the engagement.
+
+### Key legal frameworks to be aware of
+- **Computer Fraud and Abuse Act (CFAA)** — US federal law criminalizing unauthorized computer access; authorization is the entire legal defense for a pentester.
+- **UK Computer Misuse Act 1990** — UK equivalent.
+- **Kenya Computer Misuse and Cybercrimes Act, 2018** — governs unauthorized access, interception, and interference with computer systems in Kenya; relevant for any engagement involving Kenyan entities or infrastructure. Written client authorization is the critical control that keeps testing lawful under this Act.
+- **GDPR / Kenya Data Protection Act, 2019** — govern how personal data encountered during testing (e.g., in a database dump) must be handled, minimized, and reported.
+- **PCI DSS** — mandates annual and post-change penetration testing for organizations handling cardholder data (Requirement 11).
+
+### Scoping considerations
+- Black box (no prior knowledge) vs. grey box (partial knowledge/credentials) vs. white box (full knowledge, source code, architecture diagrams) — trade-off between realism and thoroughness/time efficiency.
+- Time-boxed vs. objective-based engagements.
+- In-scope vs. out-of-scope assets — always get this in writing, including third-party/cloud-hosted assets where the cloud provider's own ToS may restrict testing (e.g., AWS/Azure require pre-notification or use of always-allowed services lists for certain test types).
+
+---
+
+## 3. Methodologies & Frameworks
+
+### PTES (Penetration Testing Execution Standard) — the industry-default 7-phase model
+1. **Pre-engagement Interactions** — scoping, ROE, contracts, goals.
+2. **Intelligence Gathering** — passive and active recon (see Section 5).
+3. **Threat Modeling** — identify likely threat actors, their capabilities, and the assets they'd target.
+4. **Vulnerability Analysis** — combine automated scanning with manual verification.
+5. **Exploitation** — gain access, proving real-world impact.
+6. **Post-Exploitation** — determine the actual value of compromised systems/data, escalate privileges, move laterally (within ROE).
+7. **Reporting** — the deliverable; arguably the highest-value phase to the client.
+
+### OWASP Testing Guide (OTG) — web-application specific
+Structured around 11 sub-categories:
+- Information Gathering
+- Configuration & Deployment Management Testing
+- Identity Management Testing
+- Authentication Testing
+- Authorization Testing
+- Session Management Testing
+- Input Validation Testing
+- Error Handling
+- Cryptography
+- Business Logic Testing
+- Client-Side Testing
+
+Complementary: **OWASP ASVS (Application Security Verification Standard)** — a checklist of security requirements at 3 verification levels, often used as a *pass/fail* benchmark rather than a testing procedure. **OWASP MASVS** — the mobile equivalent.
+
+### OSSTMM (Open Source Security Testing Methodology Manual)
+- Focuses on measuring security via "operational security" — quantifying controls across 5 channels: human, physical, wireless, telecommunications, and data networks.
+- Introduces the concept of a **RAV (Risk Assessment Value)** score — attempts to make security testing scientifically measurable, unlike the more narrative PTES/OWASP approach.
+
+### NIST SP 800-115 (Technical Guide to Information Security Testing and Assessment)
+- Government/compliance-oriented, 4 phases: **Planning → Discovery → Attack → Reporting**.
+- Distinguishes **review techniques** (documentation, log, ruleset review), **target identification/analysis techniques** (scanning), and **target vulnerability validation techniques** (actual testing/exploitation).
+
+### ISSAF (Information Systems Security Assessment Framework)
+- Older, very granular, maps each testing phase to specific tools — largely superseded by PTES/OWASP in modern practice but still referenced in compliance contexts.
+
+### MITRE ATT&CK
+- Not a testing methodology — a **knowledge base of adversary tactics and techniques** observed in the real world, organized into a matrix.
+- 14 tactics (the "why"): Reconnaissance, Resource Development, Initial Access, Execution, Persistence, Privilege Escalation, Defense Evasion, Credential Access, Discovery, Lateral Movement, Collection, Command & Control, Exfiltration, Impact.
+- Each tactic has many techniques (the "how") — e.g., under Credential Access: T1110 Brute Force, T1003 OS Credential Dumping.
+- Used heavily in red teaming to structure adversary emulation plans, and in blue teaming/SOC to map detection coverage.
+
+### Cyber Kill Chain (Lockheed Martin)
+- 7 stages: Reconnaissance → Weaponization → Delivery → Exploitation → Installation → Command & Control → Actions on Objectives.
+- Older and more linear than ATT&CK, but still widely referenced, especially in enterprise security discussions and vendor material (Fortinet/Sophos-style dashboards often use kill-chain framing).
+
+### Which framework to cite when
+| Scenario | Best framework to reference |
+|---|---|
+| Scoping/running a general infra pentest | PTES |
+| Testing a specific web application | OWASP Testing Guide + ASVS |
+| Structuring a red team engagement or mapping detections | MITRE ATT&CK |
+| Government/regulated client wants a formal methodology citation | NIST SP 800-115 |
+| Client wants quantifiable "security score" | OSSTMM RAV |
+
+---
+
+## 4. The Vulnerability Management Lifecycle
+
+Vulnerability Management (VM) is a **continuous program**, distinct from the one-off engagement nature of a pentest. Know this distinction explicitly — it's a common interview probe.
+
+**The VM cycle:**
+1. **Asset Discovery & Inventory** — you can't secure what you don't know exists. CMDB integration, network discovery scans, cloud asset discovery (critical in hybrid/multi-cloud estates).
+2. **Vulnerability Scanning** — scheduled, automated scans (authenticated and unauthenticated) across the estate.
+3. **Prioritization / Risk Scoring** — CVSS base score, combined with EPSS (Exploit Prediction Scoring System — probability of exploitation in the wild in the next 30 days), asset criticality, and exposure (internet-facing vs internal).
+4. **Remediation** — patching, configuration changes, compensating controls, or risk acceptance (with sign-off) when remediation isn't feasible.
+5. **Verification / Rescanning** — confirm the fix actually closed the vulnerability.
+6. **Reporting & Metrics** — track Mean Time to Remediate (MTTR), aging vulnerability counts, remediation SLA compliance by severity.
+7. **Continuous Monitoring** — feed threat intel back in; new CVEs against existing assets trigger re-prioritization even without a new scan.
+
+**Key VM metrics interviewers/rubrics like to hear:**
+- MTTR (Mean Time to Remediate), by severity tier.
+- % of critical vulnerabilities remediated within SLA (commonly 15/30/90 days for Critical/High/Medium).
+- Vulnerability recurrence rate (are the same issues reappearing — a process/config-management signal).
+- Scan coverage % (what fraction of the known asset inventory is actually being scanned).
+
+**VM tooling categories:**
+- **Scanners:** Nessus, Qualys VMDR, Rapid7 InsightVM, OpenVAS/Greenbone.
+- **Ticketing/orchestration:** Jira, ServiceNow SecOps, integrations that auto-create remediation tickets from scan findings.
+- **Threat intel feeds:** feed EPSS/CVE/KEV (CISA Known Exploited Vulnerabilities catalog) data into prioritization.
+
+**CISA KEV Catalog** is worth naming specifically — it's the U.S. government's list of vulnerabilities *confirmed* to be actively exploited in the wild, and mature VM programs treat KEV membership as an automatic priority escalator regardless of CVSS score.
+
+---
+
+## 5. Reconnaissance & OSINT
+
+### Passive recon (no direct interaction with target systems)
+- WHOIS lookups — domain registration data.
+- DNS enumeration — records (A, MX, TXT, NS, CNAME), zone transfer attempts (`dig axfr`), subdomain enumeration.
+- Search engine dorking (Google dorks) — `site:`, `filetype:`, `inurl:` operators to find exposed files, login portals, misconfigured directories.
+- **Shodan / Censys** — internet-wide scan engines; find internet-facing devices, exposed services, default banners, ICS/SCADA exposure.
+- Social media / LinkedIn reconnaissance — employee names, roles, tech stack mentions (useful for both technical recon and social engineering pretexting).
+- **theHarvester** — automated OSINT tool for emails, subdomains, employee names from public sources.
+- Certificate transparency logs (crt.sh) — discover subdomains from issued TLS certificates.
+- Job postings — often leak internal tech stack details (e.g., "must know Fortinet FortiGate and Azure Sentinel" tells an attacker exactly what's deployed).
+
+### Active recon (direct interaction, still low-noise)
+- Ping sweeps, traceroutes.
+- Banner grabbing (`nc`, `telnet` to a port to read the service's greeting banner).
+- Basic port scanning (see Section 6).
+
+---
+
+## 6. Scanning & Enumeration
+
+### Network scanning
+- **Host discovery** — determine what's alive (ICMP, ARP for local segments, TCP/UDP probe-based discovery when ICMP is blocked).
+- **Port scanning** — TCP SYN scan (half-open, stealthy), TCP connect scan (completes handshake, noisier but doesn't need raw sockets), UDP scan (slow, unreliable due to lack of response on closed ports).
+- **Service/version detection** — identifying not just "port 443 open" but "nginx 1.18.0" — critical for matching against known CVEs.
+- **OS fingerprinting** — TCP/IP stack behavior analysis to guess the underlying OS.
+
+### Vulnerability scanning
+- Authenticated scans (with valid credentials — far more accurate, sees patch levels/configs from inside) vs. unauthenticated (external attacker's view, less accurate but tests real exposure).
+- Scanners compare discovered service/version fingerprints against CVE databases (NVD) and return matches with CVSS scores.
+- **Manual verification is mandatory** — scanners produce false positives; a competent tester confirms exploitability before reporting, especially for anything rated Critical/High.
+
+### Enumeration by service type (know at least 2-3 examples each)
+- **SMB (Windows file sharing):** `enum4linux`, `smbclient`, `crackmapexec` — null sessions, share enumeration, OS/version leakage.
+- **Web servers:** directory/file brute-forcing (`gobuster`, `ffuf`, `dirbuster`), technology fingerprinting (`whatweb`, `Wappalyzer`).
+- **DNS:** zone transfers, subdomain brute-forcing (`dnsenum`, `fierce`).
+- **SNMP:** community string guessing (`onesixtyone`), MIB walking (`snmpwalk`) — often leaks huge amounts of network topology detail on misconfigured devices.
+- **Databases:** default credential checks, version fingerprinting for known exploits.
+
+---
+
+## 7. Vulnerability Analysis & Risk Scoring
+
+### CVSS (Common Vulnerability Scoring System) v3.1/v4.0
+Base score built from:
+- **Attack Vector (AV):** Network / Adjacent / Local / Physical
+- **Attack Complexity (AC):** Low / High
+- **Privileges Required (PR):** None / Low / High
+- **User Interaction (UI):** None / Required
+- **Scope (S):** Unchanged / Changed (does exploiting this let you affect resources beyond the vulnerable component's own security authority?)
+- **Impact metrics:** Confidentiality / Integrity / Availability, each None/Low/High
+
+CVSS also has **Temporal metrics** (exploit code maturity, remediation level, report confidence) and **Environmental metrics** (allows an organization to adjust the score to their specific context/asset criticality) — most people only quote the Base score, but knowing Temporal/Environmental exist is a strong depth signal.
+
+### EPSS (Exploit Prediction Scoring System)
+- A probability score (0–1) estimating likelihood of exploitation in the wild in the next 30 days, based on real-world telemetry, not theoretical severity.
+- **Why it matters:** a CVSS 9.8 vulnerability with near-zero real-world exploitation activity may be a lower operational priority than a CVSS 7.5 vulnerability with a public weaponized exploit and high EPSS score. Modern VM prioritization combines CVSS (severity) + EPSS (likelihood) + asset criticality + exposure.
+
+### DREAD (older, Microsoft-originated risk model)
+Damage, Reproducibility, Exploitability, Affected Users, Discoverability — each scored 1-10 and averaged. Largely superseded by CVSS in industry practice but still shows up in threat-modeling exercises (e.g., alongside STRIDE).
+
+### STRIDE (threat modeling categories, not a scoring system)
+Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege — used at design time to systematically brainstorm what could go wrong with a system.
+
+### Prioritization framework to state in interviews
+"I rank by CVSS severity first, then adjust using EPSS and CISA KEV status for real-world exploitation likelihood, then weight by asset criticality and exposure (internet-facing beats internal-only), and finally consider compensating controls already in place that might reduce effective risk even if the raw CVSS is high."
+
+---
+
+## 8. Exploitation — Network & Infrastructure
+
+- **Unpatched service exploitation** — matching enumerated service versions to public CVEs/exploit-db entries.
+- **Default/weak credentials** — still one of the most common initial access vectors in real engagements; test default creds on network devices, admin panels, databases.
+- **Password attacks:**
+  - Brute force / credential stuffing (`Hydra`, `Medusa` for online; `Hashcat`, `John the Ripper` for offline hash cracking).
+  - Password spraying — trying one or a few common passwords across *many* accounts (avoids account lockout thresholds that brute-forcing a single account would trigger).
+- **Man-in-the-middle / network-level attacks:** ARP spoofing, LLMNR/NBT-NS poisoning (`Responder` — captures hashes when Windows hosts broadcast name resolution requests that don't get a legitimate response).
+- **Firewall/IDS evasion (conceptual, know for discussion, not for irresponsible use):** fragmentation, timing (slow scans), decoy scanning, source port manipulation — important to be able to discuss *why* these exist and how blue teams detect them, since your Fortinet/Sophos background gives you the defensive counterpart to this.
+
+---
+
+## 9. Exploitation — Web Applications (OWASP Top 10 2021, deep dive)
+
+**A01: Broken Access Control** — IDOR (Insecure Direct Object Reference: changing an ID in a URL/API call to access another user's data), missing function-level access checks, privilege escalation via parameter tampering. The single most common finding category in real-world web app tests.
+
+**A02: Cryptographic Failures** — sensitive data transmitted/stored without adequate encryption, weak/outdated algorithms (MD5, SHA1 for passwords), hardcoded keys, missing HSTS.
+
+**A03: Injection** — SQL injection (classic, blind, time-based, error-based), command injection, LDAP injection, NoSQL injection. `sqlmap` is the standard automation tool; manual testing with single-quote/logic-based payloads (`' OR '1'='1`) remains essential for understanding *why* an injection works, not just that a tool flagged it.
+
+**A04: Insecure Design** — flaws baked into the architecture itself (e.g., no rate limiting on a password reset flow), not fixable by a simple patch — requires design-level remediation.
+
+**A05: Security Misconfiguration** — default credentials, verbose error messages leaking stack traces, unnecessary features/ports enabled, missing security headers (CSP, X-Frame-Options, HSTS).
+
+**A06: Vulnerable and Outdated Components** — unpatched libraries/frameworks; `OWASP Dependency-Check` and `Retire.js` help identify these programmatically.
+
+**A07: Identification and Authentication Failures** — weak password policy, missing MFA, session tokens exposed in URLs, predictable session identifiers.
+
+**A08: Software and Data Integrity Failures** — insecure deserialization, unsigned/unverified software updates, CI/CD pipeline compromise (supply-chain risk).
+
+**A09: Security Logging and Monitoring Failures** — insufficient logging means breaches go undetected for months; this connects directly to "would we even notice" (Red Team framing from Section 1).
+
+**A10: Server-Side Request Forgery (SSRF)** — the app server is tricked into making requests to internal-only resources on the attacker's behalf (e.g., cloud metadata endpoints like `169.254.169.254`, which can leak cloud credentials — a very common real-world cloud pentest finding).
+
+---
+
+## 10. Exploitation — Wireless
+
+- **WEP** — fundamentally broken, crackable via IV collection (`aircrack-ng` suite) — rarely seen anymore but good to know why it failed (weak IV reuse).
+- **WPA2/WPA3** — handshake capture + offline cracking (WPA2-PSK), KRACK attack (WPA2 protocol flaw), Dragonblood (WPA3 side-channel flaws).
+- **Rogue access points / evil twin attacks** — impersonating a legitimate SSID to capture credentials.
+- **Enterprise wireless (802.1X)** — attacking RADIUS misconfigurations, certificate validation bypass.
+- Tools: `aircrack-ng`, `Kismet`, `Wifite`, `hashcat` (for handshake cracking).
+
+---
+
+## 11. Social Engineering & Physical Security Testing
+
+- **Phishing** — credential harvesting pages, payload delivery, pretexting based on OSINT-gathered employee/organizational detail.
+- **Vishing** (voice phishing) and **smishing** (SMS phishing) — increasingly common, tested where in scope.
+- **Physical assessments** — tailgating, badge cloning (RFID readers), lock bypass, dumpster diving for sensitive discarded material, USB drop attacks (leaving malicious USB drives for employees to plug in).
+- **Framework tools:** Gophish (phishing campaign management), Social-Engineer Toolkit (SET).
+- **Ethical/legal note:** social engineering and physical testing carry the highest risk of unintended consequences (real employee distress, law enforcement being called on a physical tester) — ROE must be extremely explicit here, including a physical "authorization letter" testers can present if challenged on-site.
+
+---
+
+## 12. Post-Exploitation & Active Directory Attacks
+
+### General post-exploitation goals
+- Determine the actual **business value** of what's been compromised (is this a domain controller or a print server?).
+- **Privilege escalation** — local (misconfigured services, unquoted service paths, weak file/folder permissions, kernel exploits) and domain-level.
+- **Lateral movement** — pivoting to additional hosts using captured credentials/tickets.
+- **Persistence** — establishing durable access (only ever within ROE and always documented/cleaned up afterward).
+- **Data value assessment / simulated exfiltration** — proving impact without actually exfiltrating real sensitive data off client premises.
+
+### Active Directory-specific (high-value area given Microsoft/Azure/Entra background)
+- **BloodHound** — maps AD trust and permission relationships as a graph, revealing non-obvious privilege escalation paths (e.g., low-priv user → group nested membership → GenericAll rights on a Domain Admin's object).
+- **Kerberoasting** — requesting service tickets for accounts with SPNs set, then cracking the ticket offline to recover the service account's password.
+- **AS-REP Roasting** — targeting accounts with Kerberos pre-authentication disabled.
+- **Pass-the-Hash / Pass-the-Ticket** — using captured NTLM hashes or Kerberos tickets directly without ever knowing the plaintext password.
+- **Golden Ticket / Silver Ticket attacks** — forging Kerberos tickets using a compromised krbtgt or service account hash for long-term domain persistence.
+- **Mimikatz** — the canonical tool for credential dumping from memory (LSASS), ticket manipulation, and pass-the-hash operations.
+- **Impacket suite** — a collection of Python classes for working with network protocols, widely used for remote execution (`psexec.py`, `wmiexec.py`), ticket manipulation, and SMB relay attacks.
+- **GPO abuse** — misconfigured Group Policy Objects that grant unintended write access can be leveraged for mass privilege escalation across many hosts at once.
+
+---
+
+## 13. Cloud Security Testing (AWS / Azure / GCP)
+
+### Cross-cutting cloud issues
+- **Misconfigured storage** — public S3 buckets/Azure Blob containers with sensitive data, missing encryption at rest.
+- **Overly permissive IAM** — wildcard permissions (`*:*`), unused privileged roles, missing least-privilege enforcement, stale service accounts/keys.
+- **Exposed management interfaces** — publicly accessible admin consoles, unrestricted security groups (0.0.0.0/0 on sensitive ports).
+- **SSRF-to-metadata-service** — a web app SSRF vulnerability chained to reach the cloud instance metadata endpoint, often yielding temporary cloud credentials (a very high-impact, very common real cloud pentest finding — connects back to OWASP A10).
+- **Shared Responsibility Model** — a favorite "explain simply" interview question: the cloud provider secures the infrastructure ("security *of* the cloud"); the customer secures configuration, data, identity, and access ("security *in* the cloud"). What exactly falls on which side shifts depending on IaaS vs PaaS vs SaaS.
+
+### Azure/Entra ID specific (your strongest area)
+- Legacy authentication protocols left enabled (bypass modern MFA/Conditional Access).
+- Conditional Access policy gaps (e.g., excluding certain users/apps unintentionally).
+- Privileged Identity Management (PIM) not used — standing privileged role assignments instead of just-in-time elevation.
+- Service principal credential exposure (secrets committed to code repos, long-lived client secrets instead of certificates).
+- Misconfigured app registrations with excessive API permissions granted (especially `Application` permissions, which don't require a signed-in user, vs. `Delegated`).
+
+### AWS-specific
+- IAM policy analysis tools: `ScoutSuite`, `Prowler`, `Pacu` (AWS exploitation framework specifically).
+- Common findings: overly permissive S3 bucket policies, unencrypted RDS instances, unrestricted security groups, unused/rotatable access keys.
+
+### GCP-specific
+- IAM role bindings at project vs. organization level, service account key sprawl, public Cloud Storage buckets.
+
+### Cloud-specific tools
+`ScoutSuite` (multi-cloud config auditing), `Prowler` (AWS/Azure/GCP security best-practice auditing), `Pacu` (AWS exploitation), `CloudSploit`, `Microsoft Defender for Cloud` / `Azure Security Center` recommendations (useful both offensively as a map of what's monitored, and defensively).
+
+---
+
+## 14. Mobile Application Testing
+
+- **OWASP MASVS / MSTG (Mobile Application Security Verification Standard / Testing Guide)** — the mobile equivalent of ASVS/OTG.
+- **Static analysis** — decompiling APK/IPA files, checking for hardcoded secrets, insecure data storage, exported components (Android) that shouldn't be accessible to other apps.
+- **Dynamic analysis** — intercepting traffic (often requires certificate pinning bypass), runtime manipulation with tools like `Frida` or `Objection`.
+- **Common findings:** insecure local storage of sensitive data, weak/missing certificate pinning, excessive app permissions, hardcoded API keys, insecure inter-process communication (Android intents).
+- Tools: `MobSF (Mobile Security Framework)` — automated static+dynamic analysis, `Frida`, `Objection`, `apktool`, `jadx`.
+
+---
+
+## 15. Tools Compendium (organized by phase)
+
+| Phase | Tools |
+|---|---|
+| **Recon/OSINT** | theHarvester, Shodan, Censys, Maltego, Recon-ng, crt.sh |
+| **Network scanning** | Nmap, Masscan (very high-speed port scanning), Angry IP Scanner |
+| **Vulnerability scanning** | Nessus, OpenVAS/Greenbone, Qualys, Rapid7 InsightVM |
+| **Web app testing** | Burp Suite, OWASP ZAP, sqlmap, Nikto, ffuf, Gobuster, whatweb |
+| **Exploitation frameworks** | Metasploit, Cobalt Strike (commercial, red team focused), Core Impact |
+| **Password attacks** | Hydra, Medusa, John the Ripper, Hashcat, CrackMapExec |
+| **AD attacks** | BloodHound, Mimikatz, Impacket, Rubeus, PowerView |
+| **Wireless** | Aircrack-ng suite, Kismet, Wifite |
+| **Network sniffing/MITM** | Wireshark, tcpdump, Responder, Bettercap, Ettercap |
+| **Cloud security** | ScoutSuite, Prowler, Pacu, CloudSploit |
+| **Mobile testing** | MobSF, Frida, Objection, apktool, jadx |
+| **Social engineering** | Gophish, Social-Engineer Toolkit (SET) |
+| **Reporting** | Dradis, PlexTrac, Faraday — collaborative pentest reporting/management platforms |
+
+---
+
+## 16. Reporting & Communication
+
+A finding is worthless to a client if it isn't communicated clearly. Standard report structure:
+
+1. **Executive Summary** — plain-language overview of overall risk posture, top 3-5 findings, business impact framing — written for non-technical leadership.
+2. **Scope & Methodology** — what was tested, what wasn't, what standard/framework was followed (cite PTES/OWASP/NIST here).
+3. **Findings Summary Table** — ranked by risk (Critical/High/Medium/Low/Informational), with CVSS scores.
+4. **Detailed Findings** (per vulnerability) — description, affected assets, evidence/reproduction steps (screenshots, request/response pairs), CVSS breakdown, business impact narrative, remediation recommendation, references (CVE, CWE numbers).
+5. **Remediation Roadmap** — prioritized action plan, often phased (immediate/short-term/long-term).
+6. **Appendices** — raw scan output, tool logs, full technical evidence.
+
+**Communicating to different audiences (a frequently-tested skill):**
+- **Executives/board:** business risk, financial/reputational/regulatory exposure, cost of remediation vs. cost of inaction. No jargon.
+- **Engineering/dev teams:** exact reproduction steps, code-level or config-level fix guidance, relevant CWE/CVE references.
+- **Compliance/audit teams:** mapping findings to specific regulatory or standard control failures (e.g., "this maps to ISO 27001 Annex A.9.4.1" or "PCI DSS Requirement 6.2").
+
+---
+
+## 17. Governance, Compliance & Standards Mapping
+
+- **PCI DSS** — Requirement 11.3 mandates internal and external penetration testing at least annually and after significant infrastructure/application changes; segmentation testing required if segmentation is used to reduce PCI scope.
+- **ISO/IEC 27001** — Annex A controls (particularly A.8 Asset Management, A.12 Operations Security, A.14 System Acquisition/Development/Maintenance) are often directly validated or challenged by pentest findings; a mature ISMS treats pentest results as direct input into the risk treatment plan and Statement of Applicability (SoA).
+- **SOC 2** — Trust Services Criteria often require evidence of regular vulnerability scanning and periodic penetration testing under the Security/Availability criteria.
+- **NIST Cybersecurity Framework (CSF)** — Identify, Protect, Detect, Respond, Recover — pentesting mostly validates the "Protect" and "Detect" functions; red teaming specifically stress-tests "Detect" and "Respond."
+- **HIPAA** (US healthcare) — Security Rule requires periodic technical vulnerability assessment of systems handling ePHI.
+- **GDPR / Kenya Data Protection Act 2019** — Article 32 (GDPR) / equivalent Kenyan provisions require "appropriate technical measures," which regulators and auditors increasingly interpret as including regular penetration testing for organizations processing significant personal data.
+
+**Strength move for you specifically:** explicitly linking a technical finding to a named control in one of these frameworks (e.g., "this missing MFA finding is a direct gap against ISO 27001 A.9.4.2") signals you can operate in both technical and audit/compliance contexts — a genuine differentiator given your parallel ISO/IEC 27701 Lead Auditor track.
+
+---
+
+## 18. Certifications Landscape
+
+| Certification | Focus | Level |
+|---|---|---|
+| **CompTIA Security+** | General security fundamentals | Entry |
+| **eJPT (eLearnSecurity Junior Penetration Tester)** | Practical intro-level pentesting | Entry |
+| **CEH (Certified Ethical Hacker)** | Broad tool/concept knowledge, largely multiple-choice | Entry-Mid |
+| **PenTest+ (CompTIA)** | Structured pentest methodology and reporting | Mid |
+| **OSCP (Offensive Security Certified Professional)** | Hands-on, exam requires actually compromising live machines in a timed lab | Mid-Advanced, highly respected |
+| **GPEN (GIAC Penetration Tester)** | Methodology + tools, proctored exam | Mid-Advanced |
+| **OSCE³ / OSEP / OSWE (Offensive Security advanced tracks)** | Evasion, web app exploitation, advanced exploit dev | Advanced |
+| **CRTP / CRTE (Certified Red Team Professional/Expert)** | Active Directory attack specialization | Mid-Advanced |
+| **CISSP** | Broad security management/governance, not hands-on offensive | Senior/managerial |
+| **ISO/IEC 27701 Lead Auditor** | Privacy Information Management System auditing | Compliance/audit specialization |
+
+---
+
+## 19. Command Cheat Sheet
+
+```
+# Nmap
+nmap -sS -sV -O -p- -T4 target                 # SYN scan, version/OS detect, all ports
+nmap --script vuln target                       # NSE vulnerability scripts
+nmap -sU -p 161,162 target                      # UDP scan for SNMP
+
+# DNS
+dig axfr @nameserver domain.com                 # zone transfer attempt
+dnsenum domain.com                              # subdomain enumeration
+
+# SMB enumeration
+enum4linux -a target
+smbclient -L //target -N
+
+# Web enumeration
+gobuster dir -u http://target -w wordlist.txt
+whatweb target
+nikto -h target
+
+# SQL injection (manual test payloads)
+' OR '1'='1
+' UNION SELECT NULL,NULL--
+
+# sqlmap
+sqlmap -u "http://target/page?id=1" --dbs
+
+# Password attacks
+hydra -l admin -P wordlist.txt target http-post-form "/login:user=^USER^&pass=^PASS^:F=incorrect"
+hashcat -m 1000 hashes.txt wordlist.txt         # NTLM hash cracking
+
+# AD / Kerberoasting (Impacket)
+GetUserSPNs.py domain/user:password -dc-ip x.x.x.x -request
+
+# BloodHound data collection
+SharpHound.exe -c All
+
+# Metasploit
+msfconsole
+use exploit/...
+set RHOSTS target
+set PAYLOAD ...
+exploit
+```
+
+---
+
+## 20. Glossary (quick reference)
+
+- **CVE** — Common Vulnerabilities and Exposures; a unique identifier for a publicly known vulnerability.
+- **CWE** — Common Weakness Enumeration; a category of vulnerability type (e.g., CWE-89 = SQL Injection), broader than a single CVE.
+- **CPE** — Common Platform Enumeration; standardized naming for software/hardware platforms.
+- **NVD** — National Vulnerability Database; the US government's CVE database with CVSS scoring.
+- **C2** — Command and Control; infrastructure an attacker uses to communicate with compromised systems.
+- **LOLBins** — "Living off the Land Binaries"; legitimate OS tools abused for malicious purposes to evade detection.
+- **IOA** — Indicator of Attack (behavioral, predictive) vs. **IOC** (Indicator of Compromise, forensic/after-the-fact).
+- **SIEM** — Security Information and Event Management; log aggregation/correlation platform (relevant to your Sophos/Fortinet background).
+- **SOAR** — Security Orchestration, Automation and Response; automates response playbooks off SIEM alerts.
+- **WAF** — Web Application Firewall; a control pentesters must often account for/evade during testing.
+
+---
+
+### How to use this document
+Work through Sections 1–4 first (foundations, legal, methodology, VM lifecycle) since these are the concepts most often used to calibrate seniority in interviews. Then go deep on whichever exploitation section (9, 12, 13) most overlaps with your strongest real experience, and make sure Section 16 (reporting/communication) and Section 17 (compliance mapping) are second nature — these connect directly to your parallel architecture and ISO/IEC 27701 audit work.
