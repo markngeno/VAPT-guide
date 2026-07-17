@@ -1,4 +1,4 @@
-# micro1 Interview Prep — Penetration Testing / Security Domain Expert
+# Penetration Testing / Security Domain Expert
 
 ## 1. How this interview actually works
 
